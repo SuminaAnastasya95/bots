@@ -1,5 +1,5 @@
 
-token = "8264598930:AAEIAhNLgpissjQSYrR1BE_-yKyx-Iph-nc"
+token = ""
 
 menu_text = "Текс меню | @direcode"  # текст меню
 photo_url = "https://www.economist.com/sites/default/files/images/2015/09/blogs/economist-explains/code2.png"  # ссылка на картинку
