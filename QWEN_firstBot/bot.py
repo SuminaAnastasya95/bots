@@ -13,7 +13,13 @@ from aiogram.types import (
 )
 from aiogram import F  # для фильтрации callback-данных
 from aiogram.types import CallbackQuery  # тип для обработки нажатий
+from aiogram.fsm.state import State, StatesGroup
 import random
+from aiogram.exceptions import TelegramBadRequest
+from aiogram.fsm.storage.memory import MemoryStorage
+
+# ← храним состояния в RAM (для старта — ок)
+dp = Dispatcher(storage=MemoryStorage())
 
 # Загружаем переменные из .env
 load_dotenv()
@@ -29,11 +35,11 @@ dp = Dispatcher()
 main_keyboard = ReplyKeyboardMarkup(
     keyboard=[
         [
-            KeyboardButton(text="/help"),
-            KeyboardButton(text="/info")
+            KeyboardButton(text="🆘 Помощь"),
+            KeyboardButton(text="ℹ️ О боте")
         ],
         [
-            KeyboardButton(text="❓ Случайный факт")
+            KeyboardButton(text="🎲 Факт")
         ]
     ],
     resize_keyboard=True,
@@ -43,9 +49,10 @@ main_keyboard = ReplyKeyboardMarkup(
 
 @dp.message(Command("start"))
 async def start_handler(message: Message):
-    await message.answer("Привет! 👋 Я простой эхо-бот. Напиши что-нибудь — повторю!",
-                         reply_markup=main_keyboard  # ← добавили!
-                         )
+    await message.answer(
+        "Привет! 👋 Я простой эхо-бот. Напиши что-нибудь — повторю!",
+        reply_markup=main_keyboard  # ← добавили!
+    )
 
 
 # @dp.message()
@@ -56,7 +63,7 @@ async def start_handler(message: Message):
 #         await message.answer("Я пока умею отвечать только на текст. 📝")
 
 
-@dp.message(Command("help"))
+@dp.message(F.text == '🆘 Помощь')
 async def help_handler(message: Message):
     inline_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="ℹ️ Подробнее о боте",
@@ -69,22 +76,28 @@ async def help_handler(message: Message):
                          reply_markup=inline_kb)
 
 
-@dp.message(Command("info"))
+@dp.callback_query(F.data == 'more_info')
+async def more_info_callback(callback: CallbackQuery):
+    try:
+        await callback.message.edit_text(text="🔍 Подробности:\n"
+                                         "• Написан на Python + aiogram 3\n"
+                                         "• Использует long polling\n"
+                                         "• Код открыт для обучения 😊",
+                                         reply_markup=None
+                                         )
+    except TelegramBadRequest as e:
+        if "message is not modified" in e.message:
+            pass  # Игнорируем — уже показано
+        else:
+            raise  # Остальные ошибки — поднимаем
+    await callback.answer()  # обязательно!
+
+
+@dp.message(F.text == "ℹ️ О боте")
 async def info_handler(message: Message):
     await message.answer("🤖 Меня зовут EchoBot.\n"
                          "Я учусь вместе с моим создателем — и скоро стану умнее!\n"
                          "Версия: 0.1")
-
-
-@dp.callback_query(F.data == 'more_info')
-async def more_info_callback(callback: CallbackQuery):
-    await callback.message.answer(
-        "🔍 Подробности:\n"
-        "• Написан на Python + aiogram 3\n"
-        "• Использует long polling\n"
-        "• Код открыт для обучения 😊"
-    )
-    await callback.answer()  # обязательно!
 
 
 FACTS = [
@@ -96,7 +109,7 @@ FACTS = [
 ]
 
 
-@dp.message(F.text == "❓ Случайный факт")
+@dp.message(F.text == "🎲 Факт")
 async def fact_handler(message: Message):
     fact = random.choice(FACTS)
     await message.answer(f"🎲 Факт дня:\n\n{fact}")
